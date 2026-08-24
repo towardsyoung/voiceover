@@ -1,0 +1,15 @@
+{
+  "name": "voiceover",
+  "private": true,
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "dev:api": "pnpm --filter @voiceover/api dev",
+    "dev:web": "pnpm --filter @voiceover/web dev",
+    "typecheck": "pnpm --filter @voiceover/api typecheck && pnpm --filter @voiceover/web typecheck",
+    "rebuild:native": "bash scripts/rebuild-native.sh"
+  },
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+data/
+.env
+.env.local
+*.log
+.DS_Store
+apps/api/*.tsbuildinfo
+apps/web/*.tsbuildinfo
+apps/web/dist
+apps/api/dist
