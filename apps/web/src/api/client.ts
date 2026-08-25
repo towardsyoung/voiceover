@@ -195,6 +195,7 @@ export type Job = {
   resolution: string;
   stance: string | null;
   link_end_frame?: boolean;
+  color_match_enabled?: boolean;
   storyboard_system_prompt?: string;
   video_system_prompt?: string;
   cancel_requested?: number;
@@ -206,6 +207,8 @@ export type Job = {
   storyboard: { shots: Shot[] } | null;
   shots?: ShotRun[];
   final_video_url?: string | null;
+  original_video_url?: string | null;
+  color_match_applied?: boolean;
   events_url?: string;
   created_at: string;
 };
@@ -251,7 +254,9 @@ export async function queryShot(id: string, index: number) {
 export async function concatJob(id: string) {
   return (await api.post<Job>(`/jobs/${id}/concat`)).data;
 }
+export async function smartColorMatchJob(id: string) {
+  return (await api.post<Job>(`/jobs/${id}/color-match`)).data;
+}
 export async function cancelJob(id: string) {
   return (await api.post<Job>(`/jobs/${id}/cancel`)).data;
 }
-

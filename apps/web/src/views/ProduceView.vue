@@ -24,6 +24,7 @@ const router = useRouter();
 const route = useRoute();
 
 const config = ref<Config | null>(null);
+const title = ref("");
 const script = ref("");
 const characterId = ref("");
 const sceneId = ref("");
@@ -31,6 +32,7 @@ const voiceId = ref("");
 const model = ref("seedance-2.0");
 const aspect = ref("16:9");
 const resolution = ref("720p");
+const stance = ref<"坐" | "站">("站");
 const characters = ref<Character[]>([]);
 const scenes = ref<Scene[]>([]);
 const voices = ref<Voice[]>([]);
@@ -141,6 +143,7 @@ async function applyQuery() {
 async function loadRemake(jobId: string) {
   try {
     const src = await getJob(jobId);
+    title.value = src.title || "";
     script.value = src.script || "";
     characterId.value = src.assets.character?.id ?? "";
     sceneId.value = src.assets.scene?.id ?? "";
@@ -148,6 +151,7 @@ async function loadRemake(jobId: string) {
     if (src.video_model) model.value = src.video_model;
     if (src.aspect_ratio) aspect.value = src.aspect_ratio;
     if (src.resolution) resolution.value = src.resolution;
+    if (src.stance === "坐" || src.stance === "站") stance.value = src.stance;
     linkEndFrame.value = Boolean(src.link_end_frame);
     storyboardSystemPrompt.value = src.storyboard_system_prompt || "";
     videoSystemPrompt.value = src.video_system_prompt || "";
@@ -165,6 +169,7 @@ async function makeStoryboard() {
   pending.value = true;
   try {
     const created = await createJob({
+      title: title.value.trim() || undefined,
       script: script.value,
       character_id: characterId.value,
       scene_id: sceneId.value,
@@ -172,6 +177,7 @@ async function makeStoryboard() {
       video_model: model.value,
       aspect_ratio: aspect.value,
       resolution: resolution.value,
+      stance: stance.value,
       link_end_frame: linkEndFrame.value,
       storyboard_system_prompt: storyboardSystemPrompt.value,
       video_system_prompt: videoSystemPrompt.value,
@@ -190,13 +196,20 @@ async function makeStoryboard() {
 <template>
   <div class="page produce">
     <ProductionSteps :current="1" />
-    <header class="page-head">
-      <h1>写稿，选出镜的人</h1>
-      <p>按模型时长切段，台词逐字出声。分镜出来后再改景别和动作。</p>
-    </header>
 
     <div v-if="remakeFrom" class="remake-tip">
       已载入任务「{{ remakeFrom }}」的稿子和配置。生成分镜会开一条新任务，不改原来那条。
+    </div>
+
+    <div class="task-name">
+      <label for="task-title">任务名称</label>
+      <t-input
+        id="task-title"
+        v-model="title"
+        maxlength="50"
+        clearable
+        placeholder="选填，留空后自动取口播稿开头"
+      />
     </div>
 
     <section class="prompter" aria-label="口播稿">
@@ -207,7 +220,7 @@ async function makeStoryboard() {
       <t-textarea
         v-model="script"
         placeholder="把要说的话写在这里。按原文切段，模型按音色参考逐字说。"
-        :autosize="{ minRows: 8, maxRows: 18 }"
+        :autosize="{ minRows: 4, maxRows: 10 }"
       />
     </section>
 
@@ -247,6 +260,13 @@ async function makeStoryboard() {
           <t-select v-model="resolution">
             <t-option v-for="r in resolutionOptions" :key="r" :value="r" :label="r" />
           </t-select>
+        </div>
+        <div class="field stance-field">
+          <label>口播姿势</label>
+          <t-radio-group v-model="stance" variant="default-filled">
+            <t-radio-button value="坐">坐</t-radio-button>
+            <t-radio-button value="站">站</t-radio-button>
+          </t-radio-group>
         </div>
         <div class="cta">
           <t-button theme="primary" size="large" :loading="pending" :disabled="!canCreate" @click="makeStoryboard">
@@ -292,6 +312,18 @@ async function makeStoryboard() {
   border-radius: 8px;
   font-size: 13px;
 }
+.task-name {
+  display: grid;
+  grid-template-columns: auto minmax(0, 360px);
+  align-items: center;
+  justify-content: start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.task-name label {
+  color: var(--muted);
+  font-size: 12px;
+}
 .prompter {
   background: var(--paper);
   color: var(--paper-ink);
@@ -324,16 +356,16 @@ async function makeStoryboard() {
   border: 0 !important;
   box-shadow: none !important;
   font-family: var(--display) !important;
-  font-size: 18px !important;
-  line-height: 1.85 !important;
-  padding: 20px 22px 24px !important;
+  font-size: 17px !important;
+  line-height: 1.7 !important;
+  padding: 14px 18px 16px !important;
   border-radius: 0 !important;
 }
 .prompter :deep(.t-textarea__inner::placeholder) {
   color: var(--paper-muted) !important;
 }
 .below {
-  margin-top: 28px;
+  margin-top: 20px;
 }
 .below-head {
   display: flex;
@@ -349,10 +381,17 @@ async function makeStoryboard() {
 }
 .specs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(150px, 0.7fr) auto;
   gap: 14px;
   align-items: end;
   margin-top: 18px;
+}
+.stance-field :deep(.t-radio-group) {
+  width: 100%;
+}
+.stance-field :deep(.t-radio-button) {
+  flex: 1;
+  justify-content: center;
 }
 .field {
   display: flex;
@@ -406,6 +445,10 @@ async function makeStoryboard() {
 }
 
 @media (max-width: 800px) {
+  .task-name {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
   .specs {
     grid-template-columns: 1fr;
   }

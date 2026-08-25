@@ -475,10 +475,6 @@ async function remove(kind: "c" | "s" | "v", id: string, name: string) {
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <h1>资产库</h1>
-      <p>人物、空场景、音色全局复用。画面里不要有人。音色不超过 {{ config?.limits.voice_max_sec ?? 15 }} 秒。</p>
-    </header>
     <BoardLightbox :src="lightbox" alt="多视图" @close="lightbox = null" />
     <t-tabs v-model="tab">
       <t-tab-panel value="characters" label="人物">

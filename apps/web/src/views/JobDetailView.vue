@@ -22,6 +22,7 @@ import {
   requestStoryboard,
   retryShot,
   saveStoryboard,
+  smartColorMatchJob,
   updateJob,
 } from "../api/client";
 import CastPicker from "../components/CastPicker.vue";
@@ -54,6 +55,7 @@ const editForm = ref({
   video_model: "seedance-2.0",
   aspect_ratio: "16:9",
   resolution: "720p",
+  stance: "站" as "坐" | "站",
   link_end_frame: false,
   storyboard_system_prompt: "",
   video_system_prompt: "",
@@ -275,6 +277,18 @@ function onConcat() {
   void act(() => concatJob(id.value));
 }
 
+async function onSmartColorMatch() {
+  pending.value = true;
+  try {
+    applyJob(await smartColorMatchJob(id.value));
+    MessagePlugin.success("已开始智能调色，完成后会自动更新成片");
+  } catch (e) {
+    MessagePlugin.error((e as Error).message);
+  } finally {
+    pending.value = false;
+  }
+}
+
 async function runStoryboard() {
   pending.value = true;
   try {
@@ -318,7 +332,7 @@ async function save(): Promise<boolean> {
       shots.value = structuredClone(next.storyboard.shots);
       savedSnap.value = JSON.stringify(shots.value);
     }
-    MessagePlugin.success("分镜已保存，提示词已按模板重写");
+    MessagePlugin.success("分镜和完整提示词已保存");
     return true;
   } catch (e) {
     MessagePlugin.error((e as Error).message);
@@ -386,6 +400,7 @@ function openEdit() {
     video_model: job.value.video_model,
     aspect_ratio: job.value.aspect_ratio,
     resolution: job.value.resolution,
+    stance: job.value.stance === "坐" ? "坐" : "站",
     link_end_frame: Boolean(job.value.link_end_frame),
     storyboard_system_prompt: storyboardSystemPrompt.value,
     video_system_prompt: videoSystemPrompt.value,
@@ -404,6 +419,7 @@ async function submitEdit() {
       video_model: editForm.value.video_model,
       aspect_ratio: editForm.value.aspect_ratio,
       resolution: editForm.value.resolution,
+      stance: editForm.value.stance,
       link_end_frame: editForm.value.link_end_frame,
       storyboard_system_prompt: editForm.value.storyboard_system_prompt,
       video_system_prompt: editForm.value.video_system_prompt,
@@ -465,9 +481,9 @@ onUnmounted(stopWatch);
     <template v-else-if="job">
       <ProductionSteps :current="step" />
 
-      <header class="page-head head">
+      <header class="head">
         <div>
-          <h1>{{ job.title || job.id }}</h1>
+          <strong class="job-name">{{ job.title || job.id }}</strong>
           <p class="sub-line">
             <span v-if="live" class="tally" title="进行中" />
             <span class="status-badge" :class="`status-badge--${statusTone(job.status)}`">{{ statusLabel(job.status) }}</span>
@@ -544,6 +560,7 @@ onUnmounted(stopWatch);
           <span>音色 {{ job.assets.voice?.name || "—" }}</span>
         </div>
         <div class="chip spec">{{ job.video_model }} · {{ job.aspect_ratio }} · {{ job.resolution }}</div>
+        <div class="chip spec">口播姿势 {{ job.stance || "—" }}</div>
         <div class="chip spec">{{ job.link_end_frame ? "首尾帧衔接" : "分段独立" }}</div>
       </div>
 
@@ -642,7 +659,35 @@ onUnmounted(stopWatch);
 
       <section v-else>
         <div v-if="job.final_video_url" class="final panel">
-          <div class="panel-title">成片</div>
+          <div class="final-head">
+            <div>
+              <div class="panel-title">{{ job.color_match_applied ? "色彩统一版" : "成片" }}</div>
+              <p v-if="job.color_match_applied" class="hint">已以第 1 段为基准，为后续分段匹配亮度、白平衡和饱和度。</p>
+              <p v-else-if="rows.length > 1" class="hint">片段存在明显色差时，可使用智能调色重新合成。</p>
+            </div>
+            <div class="final-actions">
+              <t-button
+                v-if="rows.length > 1 && job.status === 'done'"
+                theme="primary"
+                variant="outline"
+                size="small"
+                :loading="pending"
+                @click="onSmartColorMatch"
+              >
+                <template #icon><RefreshIcon /></template>
+                智能调色
+              </t-button>
+              <a
+                v-if="job.original_video_url && job.color_match_applied"
+                class="original-link"
+                :href="job.original_video_url"
+                target="_blank"
+                rel="noopener"
+              >
+                查看原始拼接版
+              </a>
+            </div>
+          </div>
           <video controls :src="job.final_video_url" />
         </div>
         <div v-if="!rows.length" class="empty">
@@ -739,6 +784,12 @@ onUnmounted(stopWatch);
             <t-option v-for="r in resolutionOptions" :key="r" :value="r" :label="r" />
           </t-select>
         </t-form-item>
+        <t-form-item label="口播姿势">
+          <t-radio-group v-model="editForm.stance" variant="default-filled">
+            <t-radio-button value="坐">坐</t-radio-button>
+            <t-radio-button value="站">站</t-radio-button>
+          </t-radio-group>
+        </t-form-item>
         <t-form-item label="衔接">
           <t-checkbox v-model="editForm.link_end_frame">用上一段尾帧衔接后段</t-checkbox>
           <p class="hint">勾选后第 2 段起吃上一段尾帧。关掉则各段独立生成，后段画质更稳。</p>
@@ -784,15 +835,27 @@ onUnmounted(stopWatch);
 .head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.job-name {
+  display: block;
+  max-width: 720px;
+  overflow: hidden;
+  color: var(--tungsten);
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sub-line {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin: 4px 0 0;
 }
 .toolbar {
   display: flex;
@@ -917,9 +980,51 @@ onUnmounted(stopWatch);
   box-shadow: var(--shadow);
 }
 .final video {
-  width: 100%;
+  display: block;
+  width: auto;
+  height: auto;
+  max-height: min(60vh, 560px);
   max-width: 720px;
+  margin: 0 auto;
   background: #000;
+}
+.final {
+  width: min(100%, 760px);
+}
+.final-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.final-head .hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.final-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.original-link {
+  flex: 0 0 auto;
+  color: var(--cue-2);
+  border: 1px solid var(--cue-line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+@media (max-width: 640px) {
+  .final-head {
+    flex-direction: column;
+  }
+  .final-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 .shots {
   display: flex;
@@ -967,9 +1072,17 @@ onUnmounted(stopWatch);
   margin-top: 12px;
 }
 .media video {
-  width: 100%;
+  width: auto;
+  height: auto;
+  max-height: min(55vh, 520px);
   max-width: 520px;
   background: #000;
+}
+@media (max-width: 760px) {
+  .final video,
+  .media video {
+    max-width: 100%;
+  }
 }
 .media figure {
   margin: 0;

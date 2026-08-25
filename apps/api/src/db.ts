@@ -109,6 +109,8 @@ export async function initDb(): Promise<void> {
       t.text("lease_expires_at");
       t.integer("cancel_requested").notNullable().defaultTo(0);
       t.integer("link_end_frame").notNullable().defaultTo(0);
+      t.integer("color_match_enabled").notNullable().defaultTo(0);
+      t.integer("color_match_requested").notNullable().defaultTo(0);
       t.text("storyboard_system_prompt").notNullable().defaultTo("");
       t.text("video_system_prompt").notNullable().defaultTo("");
       t.text("created_at").notNullable();
@@ -117,6 +119,12 @@ export async function initDb(): Promise<void> {
   }
   // 旧任务默认保持原行为（衔尾帧）；新任务插入时显式写 0/1
   await ensureColumn("jobs", "link_end_frame", "integer", "1");
+  const hadColorMatchRequested = await db.schema.hasColumn("jobs", "color_match_requested");
+  await ensureColumn("jobs", "color_match_enabled", "integer", "0");
+  await ensureColumn("jobs", "color_match_requested", "integer", "0");
+  if (!hadColorMatchRequested) {
+    await db("jobs").update({ color_match_enabled: 0 });
+  }
   await ensureColumn("jobs", "storyboard_system_prompt", "text", "");
   await ensureColumn("jobs", "video_system_prompt", "text", "");
   if (!(await db.schema.hasTable("shot_runs"))) {

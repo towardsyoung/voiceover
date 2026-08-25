@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { db } from "../db.js";
 import { env } from "../env.js";
@@ -9,7 +10,7 @@ import type { Shot } from "../schemas/storyboard.js";
 import { renderKouboPrompt } from "../skills/koubo.js";
 import { absStored, kindDir } from "./storage.js";
 import { emitEvent } from "./events.js";
-import { concatCopy, extractLastFrame, probeVideo, toStructureSketch } from "./media.js";
+import { concatColorMatched, concatCopy, extractLastFrame, probeVideo, toStructureSketch } from "./media.js";
 import { jobLinksEndFrame, promptCtx, readStoryboard } from "./storyboard.js";
 
 function pad(n: number) {
@@ -376,22 +377,75 @@ export async function queryShotFromProvider(jobId: string, shotIndex: number) {
 export async function concatJob(jobId: string) {
   const now = nowIso();
   await db("jobs").where({ id: jobId }).update({ status: "concatenating", updated_at: now });
+  const job = await db("jobs").where({ id: jobId }).first();
+  if (!job) throw new ApiError(404, "not_found", "任务不存在");
+  const colorMatchEnabled = Number(job.color_match_enabled) !== 0;
+  const colorMatchRequested = Number(job.color_match_requested) === 1;
+  const shouldColorMatch = colorMatchEnabled || colorMatchRequested;
   const board = readStoryboard(jobId);
   if (!board) throw new ApiError(400, "validation_failed", "没有分镜");
   const rels = board.shots.map((s) => `shots/${pad(s.index)}/video.mp4`);
   const dir = kindDir("jobs", jobId);
   const final = join(dir, "final.mp4");
-  if (existsSync(final)) renameSync(final, join(dir, "final.prev.mp4"));
-  await concatCopy(dir, rels);
+  const original = join(dir, "final-original.mp4");
+  const colorMeta = join(dir, "color-match.json");
+  if (existsSync(final)) copyFileSync(final, join(dir, "final.prev.mp4"));
+  await concatCopy(dir, rels, "final-original.mp4");
+  let colorMatchApplied = false;
+  let colorMessage = shouldColorMatch ? "单段视频无需匹配色彩" : "使用原始拼接版";
+  if (rels.length > 1 && shouldColorMatch) {
+    try {
+      const result = await concatColorMatched(dir, rels);
+      colorMatchApplied = true;
+      colorMessage = "已以第 1 段为基准自动统一各段色彩";
+      writeFileSync(
+        colorMeta,
+        JSON.stringify({ enabled: colorMatchEnabled, requested: colorMatchRequested, applied: true, ...result }, null, 2),
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      colorMessage = `色彩匹配失败，已回退原始拼接版：${message}`;
+      const fallback = join(dir, `final.fallback-${randomUUID()}.mp4`);
+      copyFileSync(original, fallback);
+      renameSync(fallback, final);
+      writeFileSync(
+        colorMeta,
+        JSON.stringify({ enabled: colorMatchEnabled, requested: colorMatchRequested, applied: false, error: message }, null, 2),
+      );
+    }
+  } else {
+    const single = join(dir, `final.single-${randomUUID()}.mp4`);
+    copyFileSync(original, single);
+    renameSync(single, final);
+    writeFileSync(
+      colorMeta,
+      JSON.stringify(
+        {
+          enabled: colorMatchEnabled,
+          requested: colorMatchRequested,
+          applied: false,
+          reason: shouldColorMatch ? "single_segment" : "disabled",
+        },
+        null,
+        2,
+      ),
+    );
+  }
   await db("jobs").where({ id: jobId }).update({
     status: "done",
     final_video_path: `jobs/${jobId}/final.mp4`,
     error: null,
+    color_match_requested: 0,
     worker_id: null,
     lease_expires_at: null,
     updated_at: nowIso(),
   });
-  await emitEvent({ jobId, eventType: "concat_done", message: "成片已拼接" });
+  await emitEvent({
+    jobId,
+    level: colorMatchApplied || rels.length === 1 || !shouldColorMatch ? "info" : "warning",
+    eventType: "concat_done",
+    message: `成片已拼接。${colorMessage}`,
+  });
 }
 
 export async function runJob(jobId: string) {

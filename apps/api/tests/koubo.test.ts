@@ -4,7 +4,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { alnum, inferStance, renderKouboPrompt, splitDialogue } from "../src/skills/koubo.js";
-import type { Shot } from "../src/schemas/storyboard.js";
+import { fillPrompts, validateStoryboard } from "../src/services/storyboard.js";
+import type { Shot, Storyboard } from "../src/schemas/storyboard.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -85,6 +86,40 @@ test("prompt shot2 dolly does not repeat full dialogue", () => {
 test("prompt includes user extra requirements", () => {
   const text = renderKouboPrompt(baseShot({ camera: "固定" }), { ...ctx, extra: "始终看镜头，双手不要离开桌面" });
   assert.match(text, /用户补充要求：始终看镜头，双手不要离开桌面/);
+});
+
+test("fillPrompts keeps a manually overridden full prompt", () => {
+  const manual = baseShot({ prompt: "手动编辑的完整提示词", prompt_override: true });
+  const generated = baseShot({ index: 2, prompt: "旧提示词", prompt_override: false });
+  const board: Storyboard = {
+    skill: "koubo",
+    model: "seedance-2.0",
+    aspect_ratio: "16:9",
+    resolution: "720p",
+    stance: "坐",
+    assets: { character: "李主播", scene: "演播室", voice: "默认" },
+    shots: [manual, generated],
+  };
+
+  fillPrompts(board, { video_model: "seedance-2.0", aspect_ratio: "16:9", resolution: "720p", stance: "坐" });
+
+  assert.equal(board.shots[0]?.prompt, "手动编辑的完整提示词");
+  assert.notEqual(board.shots[1]?.prompt, "旧提示词");
+});
+
+test("validateStoryboard rejects an empty manual full prompt", () => {
+  const shot = baseShot({ prompt: "", prompt_override: true });
+  const board: Storyboard = {
+    skill: "koubo",
+    model: "seedance-2.0",
+    aspect_ratio: "16:9",
+    resolution: "720p",
+    stance: "坐",
+    assets: { character: "李主播", scene: "演播室", voice: "默认" },
+    shots: [shot],
+  };
+
+  assert.throws(() => validateStoryboard(board, shot.dialogue, "seedance-2.0"), /手动完整提示词不能为空/);
 });
 
 test("prompt shot2 independent skips end-frame link", () => {

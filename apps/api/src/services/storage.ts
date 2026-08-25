@@ -20,7 +20,8 @@ const ALLOW: Record<FileKind, RegExp[]> = {
   voices: [/^sample(\.prev)?\.wav$/],
   jobs: [
     /^storyboard\.json$/,
-    /^final(\.prev)?\.mp4$/,
+    /^final(?:\.prev|-original)?\.mp4$/,
+    /^color-match\.json$/,
     /^shots\/\d{2}\/(video|end|end-gray|end-structure|request|provider)(\.(attempt|stale)\d+)?\.(mp4|jpg|png|json)$/,
     /^shots\/\d{2}\/log\.txt$/,
   ],

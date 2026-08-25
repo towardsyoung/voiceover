@@ -59,6 +59,9 @@ export function validateStoryboard(board: Storyboard, script: string, model: str
     if (s.duration_sec < lim.min || s.duration_sec > lim.max) {
       throw new ApiError(422, "duration_out_of_range", `第 ${s.index} 段时长 ${s.duration_sec}s 超出 ${model} 的 ${lim.min}-${lim.max}s`);
     }
+    if (s.prompt_override && !s.prompt.trim()) {
+      throw new ApiError(422, "validation_failed", `第 ${s.index} 段的手动完整提示词不能为空`);
+    }
     if (s.stance !== stance) throw new ApiError(422, "stance_mismatch", "全片姿态必须一致");
     if (!s.end_frame.trim()) throw new ApiError(422, "validation_failed", `第 ${s.index} 段缺少尾帧`);
   }

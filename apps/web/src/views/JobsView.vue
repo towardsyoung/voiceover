@@ -53,11 +53,6 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <h1>制作任务</h1>
-      <p>一条任务就是一次成片。点进去改分镜、看出片，或把稿子再做一条。</p>
-    </header>
-
     <div v-if="items.length" class="filters" role="tablist">
       <button
         v-for="f in FILTERS"

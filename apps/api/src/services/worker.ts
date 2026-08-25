@@ -194,6 +194,7 @@ async function tickOnce() {
         await db("jobs").where({ id: gen.id }).update({
           status: "concat_failed",
           error: message,
+          color_match_requested: 0,
           worker_id: null,
           lease_expires_at: null,
           updated_at: nowIso(),

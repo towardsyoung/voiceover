@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { Router } from "express";
 import { db } from "../db.js";
@@ -52,6 +52,11 @@ async function serialize(row: Record<string, unknown>) {
   const sc = row.scene_id ? await db("scenes").where({ id: row.scene_id }).first() : null;
   const vo = row.voice_id ? await db("voices").where({ id: row.voice_id }).first() : null;
   const runs = await db("shot_runs").where({ job_id: id }).orderBy("shot_index");
+  const originalPath = absStored(`jobs/${id}/final-original.mp4`);
+  const colorMetaPath = absStored(`jobs/${id}/color-match.json`);
+  const colorMeta = existsSync(colorMetaPath)
+    ? (safeJson(readFileSync(colorMetaPath, "utf8")) as { applied?: boolean } | null)
+    : null;
   const shots = runs.map((r) => {
     const nn = String(r.shot_index).padStart(2, "0");
     return {
@@ -72,6 +77,7 @@ async function serialize(row: Record<string, unknown>) {
     stance: row.stance,
     skill: row.skill,
     link_end_frame: Number(row.link_end_frame) === 1,
+    color_match_enabled: Number(row.color_match_enabled) !== 0,
     storyboard_system_prompt: String(row.storyboard_system_prompt || ""),
     video_system_prompt: String(row.video_system_prompt || ""),
     cancel_requested: Number(row.cancel_requested) || 0,
@@ -106,6 +112,8 @@ async function serialize(row: Record<string, unknown>) {
     storyboard: board,
     shots,
     final_video_url: row.final_video_path ? fileUrl("jobs", id, "final.mp4") : null,
+    original_video_url: existsSync(originalPath) ? fileUrl("jobs", id, "final-original.mp4") : null,
+    color_match_applied: colorMeta?.applied === true,
     events_url: `/api/jobs/${id}/events`,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -150,11 +158,12 @@ jobsRouter.post("/jobs", async (req, res, next) => {
     const vo = await db("voices").where({ id: b.voice_id }).first();
     if (!ch || !sc || !vo) fail(400, "validation_failed", "人物、场景、音色都必须选择");
     const stance = b.stance || inferStance(String(sc.name), String(sc.bio || ""));
+    if (stance !== "坐" && stance !== "站") fail(400, "validation_failed", "口播姿势只能选坐或站");
     const now = nowIso();
     const id = newId();
     await db("jobs").insert({
       id,
-      title: String(b.title || script.slice(0, 24)),
+      title: String(b.title || "").trim().slice(0, 50) || script.slice(0, 24),
       script,
       character_id: ch.id,
       scene_id: sc.id,
@@ -168,6 +177,9 @@ jobsRouter.post("/jobs", async (req, res, next) => {
       resolution: b.resolution || "720p",
       stance,
       link_end_frame: b.link_end_frame === true || b.link_end_frame === 1 || b.link_end_frame === "1" ? 1 : 0,
+      color_match_enabled:
+        b.color_match_enabled === true || b.color_match_enabled === 1 || b.color_match_enabled === "1" ? 1 : 0,
+      color_match_requested: 0,
       storyboard_system_prompt: clipText(b.storyboard_system_prompt),
       video_system_prompt: clipText(b.video_system_prompt),
       status: "draft",
@@ -191,7 +203,12 @@ jobsRouter.patch("/jobs/:id", async (req, res, next) => {
     const patch: Record<string, unknown> = { updated_at: nowIso() };
     if (req.body.title !== undefined) patch.title = String(req.body.title);
     if (req.body.script !== undefined) patch.script = String(req.body.script);
-    if (req.body.stance !== undefined) patch.stance = req.body.stance;
+    if (req.body.stance !== undefined) {
+      if (req.body.stance !== "坐" && req.body.stance !== "站") {
+        fail(400, "validation_failed", "口播姿势只能选坐或站");
+      }
+      patch.stance = req.body.stance;
+    }
 
     // 结构类字段可直接改，保留现有分镜与分段；出片提示词按新配置重写
     const structural: Record<string, unknown> = {};
@@ -221,6 +238,14 @@ jobsRouter.patch("/jobs/:id", async (req, res, next) => {
     if (req.body.resolution !== undefined) structural.resolution = String(req.body.resolution);
     if (req.body.link_end_frame !== undefined) {
       patch.link_end_frame = req.body.link_end_frame === true || req.body.link_end_frame === 1 || req.body.link_end_frame === "1" ? 1 : 0;
+    }
+    if (req.body.color_match_enabled !== undefined) {
+      patch.color_match_enabled =
+        req.body.color_match_enabled === false ||
+        req.body.color_match_enabled === 0 ||
+        req.body.color_match_enabled === "0"
+          ? 0
+          : 1;
     }
     if (req.body.storyboard_system_prompt !== undefined) {
       patch.storyboard_system_prompt = clipText(req.body.storyboard_system_prompt);
@@ -253,7 +278,12 @@ jobsRouter.patch("/jobs/:id", async (req, res, next) => {
         board.model = String(updated.video_model) as Storyboard["model"];
         board.aspect_ratio = String(updated.aspect_ratio) as Storyboard["aspect_ratio"];
         board.resolution = String(updated.resolution) as Storyboard["resolution"];
-        if (updated.stance === "坐" || updated.stance === "站") board.stance = updated.stance;
+        if (updated.stance === "坐" || updated.stance === "站") {
+          board.stance = updated.stance;
+          board.shots.forEach((shot) => {
+            shot.stance = updated.stance;
+          });
+        }
         board.assets = {
           character: String(updated.character_name_snap || board.assets.character),
           scene: String(updated.scene_name_snap || board.assets.scene),
@@ -451,6 +481,37 @@ jobsRouter.post("/jobs/:id/concat", async (req, res, next) => {
     }
     await db("jobs").where({ id: jobId }).update({
       status: "concatenating",
+      worker_id: null,
+      lease_expires_at: null,
+      error: null,
+      updated_at: nowIso(),
+    });
+    res.json(await serialize((await db("jobs").where({ id: jobId }).first())!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+jobsRouter.post("/jobs/:id/color-match", async (req, res, next) => {
+  try {
+    const job = await loadJob(req.params.id);
+    const jobId = String(job.id);
+    if (!["done", "concat_failed", "needs_retry"].includes(String(job.status))) {
+      fail(409, "invalid_state", "当前状态不能智能调色");
+    }
+    const board = readStoryboard(jobId);
+    if (!board) fail(400, "validation_failed", "还没有分镜");
+    if (board.shots.length < 2) fail(400, "validation_failed", "只有一个片段，无需智能调色");
+    const runs = await db("shot_runs").where({ job_id: jobId });
+    const byIndex = new Map(runs.map((r) => [Number(r.shot_index), r]));
+    for (const shot of board.shots) {
+      if (byIndex.get(shot.index)?.status !== "succeeded") {
+        fail(400, "validation_failed", "还有未完成的段，不能智能调色");
+      }
+    }
+    await db("jobs").where({ id: jobId }).update({
+      status: "concatenating",
+      color_match_requested: 1,
       worker_id: null,
       lease_expires_at: null,
       error: null,
