@@ -3,6 +3,9 @@ packages:
   - apps/desktop
   - apps/web
 
+minimumReleaseAgeExclude:
+  - '@noble/hashes@2.4.0'
+
 allowBuilds:
   '@ffmpeg-installer/darwin-arm64': true
   '@ffmpeg-installer/win32-x64': true

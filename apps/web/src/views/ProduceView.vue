@@ -262,7 +262,6 @@ async function makeStoryboard() {
             <template #icon><PlayCircleIcon /></template>
             生成分镜
           </t-button>
-          <span class="kbd hint">⌘ / Ctrl + Enter</span>
         </div>
       </div>
       <div class="link-opt">

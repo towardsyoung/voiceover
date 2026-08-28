@@ -18,9 +18,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-pnpm --filter @voiceover/api dev &
+pnpm_config_verify_deps_before_run=false pnpm --filter @voiceover/api dev &
 API_PID=$!
-pnpm --filter @voiceover/web dev &
+pnpm_config_verify_deps_before_run=false pnpm --filter @voiceover/web dev &
 WEB_PID=$!
 
 echo "API  http://${API_HOST}:${API_PORT}"

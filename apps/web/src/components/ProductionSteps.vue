@@ -86,6 +86,10 @@ const STEPS = [
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding-right: 12px;
+  position: relative;
+  z-index: 1;
+  background: var(--void);
 }
 .label {
   font-size: 13px;
