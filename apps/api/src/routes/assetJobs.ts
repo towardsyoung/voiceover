@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { db } from "../db.js";
-import { env } from "../env.js";
 import { fail } from "../errors.js";
 import { newId, nowIso } from "../ids.js";
 import { fileUrl } from "../services/storage.js";
+import { isImageEnabled } from "../services/modelSettings.js";
 
 export const assetJobsRouter = Router();
 
@@ -16,8 +16,8 @@ export async function assertNoInflightBoard(targetId: string) {
 }
 
 export async function enqueueAssetJob(kind: "character_board" | "scene_board", targetId: string) {
-  if (!env.featureImageGen) {
-    fail(400, "feature_disabled", "未开启 FEATURE_IMAGE_GEN，制板将在后续版本接通");
+  if (!isImageEnabled()) {
+    fail(400, "feature_disabled", "请先在模型设置中配置图片模型");
   }
   await assertNoInflightBoard(targetId);
   const now = nowIso();

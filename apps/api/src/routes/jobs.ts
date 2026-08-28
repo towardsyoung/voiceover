@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { Router } from "express";
 import { db } from "../db.js";
-import { env } from "../env.js";
 import { fail } from "../errors.js";
 import { newId, nowIso } from "../ids.js";
 import { inferStance } from "../skills/koubo.js";
@@ -161,6 +160,8 @@ jobsRouter.post("/jobs", async (req, res, next) => {
     if (stance !== "坐" && stance !== "站") fail(400, "validation_failed", "口播姿势只能选坐或站");
     const now = nowIso();
     const id = newId();
+    const videoModel = String(b.video_model || "");
+    getVideoProvider(videoModel);
     await db("jobs").insert({
       id,
       title: String(b.title || "").trim().slice(0, 50) || script.slice(0, 24),
@@ -172,7 +173,7 @@ jobsRouter.post("/jobs", async (req, res, next) => {
       scene_name_snap: sc.name,
       voice_name_snap: vo.name,
       skill: "koubo",
-      video_model: b.video_model || "seedance-2.0",
+      video_model: videoModel,
       aspect_ratio: b.aspect_ratio || "16:9",
       resolution: b.resolution || "720p",
       stance,
@@ -367,7 +368,7 @@ jobsRouter.post("/jobs/:id/generate", async (req, res, next) => {
     if (!["storyboard_ready", "needs_retry", "done", "concat_failed", "cancelled"].includes(String(job.status))) {
       fail(409, "invalid_state", "当前状态不能出片");
     }
-    if (!env.featureVideoGen) fail(400, "feature_disabled", "未开启 FEATURE_VIDEO_GEN");
+    getVideoProvider(String(job.video_model));
     const board = readStoryboard(jobId);
     if (!board) fail(400, "validation_failed", "还没有分镜");
     validateStoryboard(board, String(job.script), String(job.video_model), jobLinksEndFrame(job));
@@ -421,7 +422,7 @@ jobsRouter.post("/jobs/:id/shots/:index/retry", async (req, res, next) => {
     if (!["needs_retry", "done", "concat_failed", "cancelled"].includes(String(job.status))) {
       fail(409, "invalid_state", "当前状态不能重试本段");
     }
-    if (!env.featureVideoGen) fail(400, "feature_disabled", "未开启 FEATURE_VIDEO_GEN");
+    getVideoProvider(String(job.video_model));
     const board = readStoryboard(jobId);
     if (!board) fail(400, "validation_failed", "还没有分镜");
     const idx = Number(req.params.index);

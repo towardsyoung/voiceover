@@ -23,6 +23,25 @@ export type Config = {
   features: { image_gen: boolean; video_gen: boolean };
 };
 
+export type ModelSettings = {
+  llm: { baseUrl: string; apiKey: string; model: string; jsonMode: "json_schema" | "json_object" };
+  image: { baseUrl: string; apiKey: string; model: string; size: string; quality: string };
+  ark: { baseUrl: string; apiKey: string; models: Record<string, string> };
+  minimax: { baseUrl: string; apiKey: string; model: string };
+  defaultVideoModel: string;
+  attachPrevVideo: boolean;
+};
+
+export type ArkModelSetting = { id: string; label: string; minSec: number; maxSec: number };
+
+export async function getModelSettings() {
+  return (await api.get<{ settings: ModelSettings; ark_models: ArkModelSetting[] }>("/settings/models")).data;
+}
+
+export async function updateModelSettings(settings: ModelSettings) {
+  return (await api.put<{ settings: ModelSettings; ark_models: ArkModelSetting[] }>("/settings/models", settings)).data;
+}
+
 export type VolcAssetState = {
   asset_id?: string | null;
   assetId?: string | null;

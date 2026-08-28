@@ -16,6 +16,9 @@ export function findRepoRoot(from = here): string {
 }
 
 export const REPO_ROOT = findRepoRoot();
+export const RESOURCE_ROOT = process.env.VOICEOVER_RESOURCE_DIR
+  ? resolve(process.env.VOICEOVER_RESOURCE_DIR)
+  : REPO_ROOT;
 
 function loadDotenv() {
   const path = join(REPO_ROOT, ".env");
@@ -37,12 +40,6 @@ function loadDotenv() {
 
 loadDotenv();
 
-function flag(name: string, fallback = false): boolean {
-  const raw = process.env[name];
-  if (raw === undefined) return fallback;
-  return raw === "1" || raw.toLowerCase() === "true";
-}
-
 export function resolveDataDir(): string {
   const fromEnv = process.env.VOICEOVER_DATA_DIR || process.env.DATA_DIR;
   if (fromEnv) {
@@ -58,33 +55,13 @@ export const env = {
   host: process.env.API_HOST || "127.0.0.1",
   port: Number(process.env.API_PORT || 18787),
   dataDir: resolveDataDir(),
-  featureImageGen: flag("FEATURE_IMAGE_GEN", false),
-  featureVideoGen: flag("FEATURE_VIDEO_GEN", false),
-  defaultVideoModel: process.env.DEFAULT_VIDEO_MODEL || "seedance-2.0",
+  resourceRoot: RESOURCE_ROOT,
+  ffmpegPath: process.env.FFMPEG_PATH || "ffmpeg",
+  ffprobePath: process.env.FFPROBE_PATH || "ffprobe",
   voiceMaxSec: 15,
   imageMaxMb: 20,
   audioMaxMb: 15,
-  imageApiKey: process.env.IMAGE_API_KEY || process.env.OPENAI_API_KEY || "",
-  imageBaseUrl: (process.env.IMAGE_BASE_URL || process.env.OPENAI_BASE_URL || "").replace(/\/$/, ""),
-  imageModel: process.env.IMAGE_MODEL || "",
-  imageSize: process.env.IMAGE_SIZE || "1024x1024",
-  imageQuality: process.env.IMAGE_QUALITY || "",
-  llmBaseUrl: (process.env.LLM_BASE_URL || "").replace(/\/$/, ""),
-  llmApiKey: process.env.LLM_API_KEY || "",
-  llmModel: process.env.LLM_MODEL || "",
-  llmJsonMode: process.env.LLM_JSON_MODE || "json_schema",
   leaseSec: Number(process.env.LEASE_SEC || 60),
-  arkApiKey: process.env.ARK_API_KEY || "",
-  arkBaseUrl: (process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/$/, ""),
-  arkModel20: process.env.ARK_MODEL_SEEDANCE_20 || "doubao-seedance-2-0-260128",
-  arkModel20Fast: process.env.ARK_MODEL_SEEDANCE_20_FAST || "doubao-seedance-2-0-fast-260128",
-  arkModel20Mini: process.env.ARK_MODEL_SEEDANCE_20_MINI || "doubao-seedance-2-0-mini-260615",
-  arkModel25: process.env.ARK_MODEL_SEEDANCE_25 || "doubao-seedance-2-5-260628",
-  // 真人模型（需配合火山素材库 AK/SK 使用）
-  arkModel20Real: process.env.ARK_MODEL_SEEDANCE_20_REAL || "doubao-seedance-2-0-real",
-  arkModel20FastReal: process.env.ARK_MODEL_SEEDANCE_20_FAST_REAL || "doubao-seedance-2-0-fast-260128",
-  arkModel20MiniReal: process.env.ARK_MODEL_SEEDANCE_20_MINI_REAL || "doubao-seedance-2-0-mini-260615",
-  arkModel25Real: process.env.ARK_MODEL_SEEDANCE_25_REAL || "doubao-seedance-2-5-real",
   // 火山素材库（真人参考图审核）
   arkAssetAk: process.env.ARK_ASSET_AK || "",
   arkAssetSk: process.env.ARK_ASSET_SK || "",
@@ -105,8 +82,4 @@ export const env = {
   ossEndpoint: (process.env.OSS_ENDPOINT || "").replace(/\/+$/, ""),
   ossPublicBaseUrl: (process.env.OSS_PUBLIC_BASE_URL || "").replace(/\/+$/, ""),
   ossPrefix: (process.env.OSS_PREFIX || "").replace(/^\/+|\/+$/g, ""),
-  minimaxApiKey: process.env.MINIMAX_API_KEY || "",
-  minimaxBaseUrl: (process.env.MINIMAX_BASE_URL || "https://api.minimaxi.com").replace(/\/$/, ""),
-  minimaxModel: process.env.MINIMAX_MODEL || "MiniMax-H3",
-  attachPrevVideo: flag("ATTACH_PREV_VIDEO", false),
 };

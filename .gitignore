@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dist/
 data/
 .env
@@ -9,3 +10,6 @@ apps/api/*.tsbuildinfo
 apps/web/*.tsbuildinfo
 apps/web/dist
 apps/api/dist
+apps/desktop/dist
+apps/desktop/release
+.idea/*

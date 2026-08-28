@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { extname } from "node:path";
-import { env } from "../env.js";
 import { ApiError } from "../errors.js";
 import { modelLimits } from "../skills/koubo.js";
 import type { VideoGenRequest, VideoPoll, VideoProvider } from "./video.js";
 import { getApprovedCharacterAsset, hasAssetConfig, prepareRealReferenceList, type PreparedReference } from "./volcengineAsset.js";
+import { getModelSettings } from "../services/modelSettings.js";
 
 function log(msg: string) {
   console.log(`[videoArk] ${msg}`);
@@ -60,22 +60,17 @@ export class ArkSeedanceProvider implements VideoProvider {
   }
 
   private arkModelId(model: string): string {
-    if (model === "seedance-2.0-fast") return env.arkModel20Fast;
-    if (model === "seedance-2.0-mini") return env.arkModel20Mini;
-    if (model === "seedance-2.5") return env.arkModel25;
-    if (model === "seedance-2.0-real") return env.arkModel20Real;
-    if (model === "seedance-2.0-fast-real") return env.arkModel20FastReal;
-    if (model === "seedance-2.0-mini-real") return env.arkModel20MiniReal;
-    if (model === "seedance-2.5-real") return env.arkModel25Real;
-    return env.arkModel20;
+    return getModelSettings().ark.models[model] || "";
   }
 
   async submit(req: VideoGenRequest): Promise<string> {
     if (!this.supports(req.model)) {
       throw new ApiError(400, "validation_failed", `方舟 provider 不支持模型 ${req.model}`);
     }
-    if (!env.featureVideoGen) throw new ApiError(400, "feature_disabled", "未开启 FEATURE_VIDEO_GEN");
-    if (!env.arkApiKey) throw new ApiError(400, "feature_disabled", "未配置 ARK_API_KEY");
+    const settings = getModelSettings().ark;
+    if (!settings.apiKey || !settings.baseUrl || !settings.models[req.model]) {
+      throw new ApiError(400, "feature_disabled", `请先在模型设置中配置 ${req.model}`);
+    }
     if (req.resolution !== "480p" && req.resolution !== "720p") {
       throw new ApiError(400, "validation_failed", "方舟模型只支持 480p / 720p");
     }
@@ -140,9 +135,9 @@ export class ArkSeedanceProvider implements VideoProvider {
     const promptChars = Array.from(req.prompt).length;
     log("完整视频提示词 (" + promptChars + "字):\n" + req.prompt);
     const startedAt = Date.now();
-    const res = await fetch(`${env.arkBaseUrl}/contents/generations/tasks`, {
+    const res = await fetch(`${settings.baseUrl}/contents/generations/tasks`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${env.arkApiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${settings.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const cost = Date.now() - startedAt;
@@ -171,11 +166,12 @@ export class ArkSeedanceProvider implements VideoProvider {
   }
 
   async poll(requestId: string): Promise<VideoPoll> {
+    const settings = getModelSettings().ark;
     const startedAt = Date.now();
     let res: Response;
     try {
-      res = await fetch(`${env.arkBaseUrl}/contents/generations/tasks/${requestId}`, {
-        headers: { Authorization: `Bearer ${env.arkApiKey}` },
+      res = await fetch(`${settings.baseUrl}/contents/generations/tasks/${requestId}`, {
+        headers: { Authorization: `Bearer ${settings.apiKey}` },
       });
     } catch (err) {
       const msg = (err as Error).message || "fetch failed";
@@ -231,10 +227,11 @@ export class ArkSeedanceProvider implements VideoProvider {
   }
 
   async cancel(requestId: string): Promise<void> {
+    const settings = getModelSettings().ark;
     try {
-      const res = await fetch(`${env.arkBaseUrl}/contents/generations/tasks/${requestId}`, {
+      const res = await fetch(`${settings.baseUrl}/contents/generations/tasks/${requestId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${env.arkApiKey}` },
+        headers: { Authorization: `Bearer ${settings.apiKey}` },
       });
       log(`取消任务: requestId=${requestId} status=${res.status}`);
     } catch (e) {

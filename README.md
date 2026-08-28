@@ -19,11 +19,29 @@ chmod +x scripts/dev.sh
 
 只监听本机。数据在 `data/`（可用 `DATA_DIR` 改）。
 
-当前已接通：资产库 CRUD、成品板上传、音色录音/上传转 WAV、制板任务队列、口播分镜（可编辑表）、出片 API 与任务详情已接通；默认 FEATURE_VIDEO_GEN=0，开启需 ARK_API_KEY。
+当前已接通：资产库 CRUD、成品板上传、音色录音/上传转 WAV、制板任务队列、口播分镜（可编辑表）、出片 API 与任务详情。
 
-- 制板：`.env` 设 `FEATURE_IMAGE_GEN=1`，并填写 `IMAGE_BASE_URL` / `IMAGE_API_KEY` / `IMAGE_MODEL`（任意 OpenAI 兼容图片网关）。
-- 分镜：填写 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`（国产 OpenAI 兼容网关）。
-- 视频生成仍默认关（`FEATURE_VIDEO_GEN=0`）。
+- 模型：启动后进入「设置 → 模型设置」，填写 LLM、图片或视频模型参数；未配置完整的模型不会启用，也不会出现在制作页。
+- 真人 Seedance 的火山素材库和 OSS 辅助配置仍通过本机 `.env` 设置。
+
+## Electron 桌面版
+
+桌面版名称为“小阳哥数字人口播工作台”，支持 macOS Apple Silicon 和 Windows x64。应用内置 Node 运行时、ffmpeg/ffprobe，用户数据保存在系统用户目录，不包含开发机的 `.env` 或 `data/`。
+
+```bash
+pnpm install
+pnpm build
+pnpm desktop
+```
+
+本机打包：
+
+```bash
+pnpm package:mac
+pnpm package:win
+```
+
+GitHub Actions 可手动生成测试安装包；推送与 `apps/desktop/package.json` 版本一致的 `v*` Tag 会创建包含 DMG、EXE 和校验值的 GitHub Pre-release。详见 `apps/desktop/README.md`。
 
 ## 文档
 

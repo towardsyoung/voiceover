@@ -9,20 +9,20 @@ const exec = promisify(execFile);
 
 export async function ffmpegVersion(): Promise<string> {
   try {
-    const { stdout } = await exec("ffmpeg", ["-version"], { encoding: "utf8" });
+    const { stdout } = await exec(env.ffmpegPath, ["-version"], { encoding: "utf8" });
     const m = stdout.match(/ffmpeg version (\S+)/);
     return m?.[1] ?? "unknown";
   } catch {
-    throw new Error("未找到 ffmpeg，请先 brew install ffmpeg");
+    throw new Error(`未找到 ffmpeg：${env.ffmpegPath}`);
   }
 }
 
 export async function toWav48k(src: string, dest: string): Promise<void> {
-  await exec("ffmpeg", ["-y", "-i", src, "-ar", "48000", "-acodec", "pcm_s16le", dest]);
+  await exec(env.ffmpegPath, ["-y", "-i", src, "-ar", "48000", "-acodec", "pcm_s16le", dest]);
 }
 
 export async function probeDurationMs(file: string): Promise<number> {
-  const { stdout } = await exec("ffprobe", [
+  const { stdout } = await exec(env.ffprobePath, [
     "-v",
     "error",
     "-show_entries",
@@ -59,7 +59,7 @@ export function requireImage(file: { size: number; buffer: Buffer }): ImageExt {
 }
 
 export async function extractLastFrame(video: string, dest: string): Promise<void> {
-  await exec("ffmpeg", [
+  await exec(env.ffmpegPath, [
     "-y",
     "-sseof",
     "-1",
@@ -77,7 +77,7 @@ export async function extractLastFrame(video: string, dest: string): Promise<voi
 }
 
 export async function toGrayscale(src: string, dest: string): Promise<void> {
-  await exec("ffmpeg", [
+  await exec(env.ffmpegPath, [
     "-y",
     "-i",
     src,
@@ -92,7 +92,7 @@ export async function toGrayscale(src: string, dest: string): Promise<void> {
 }
 
 export async function toStructureSketch(src: string, dest: string): Promise<void> {
-  await exec("ffmpeg", [
+  await exec(env.ffmpegPath, [
     "-y",
     "-i",
     src,
@@ -107,7 +107,7 @@ export async function toStructureSketch(src: string, dest: string): Promise<void
 }
 
 export async function probeVideo(file: string): Promise<{ duration: number; width: number; height: number; codec: string }> {
-  const { stdout } = await exec("ffprobe", [
+  const { stdout } = await exec(env.ffprobePath, [
     "-v",
     "error",
     "-select_streams",
@@ -190,7 +190,7 @@ function summarizeRegion(values: Lab[]): Lab {
 
 async function sampleRgbFrame(file: string, second: number): Promise<Buffer> {
   const { stdout } = await exec(
-    "ffmpeg",
+    env.ffmpegPath,
     [
       "-v", "error", "-ss", second.toFixed(3), "-i", file, "-frames:v", "1",
       "-vf", `scale=${ANALYSIS_WIDTH}:${ANALYSIS_HEIGHT}:flags=area,format=rgb24`,
@@ -347,7 +347,7 @@ export async function concatColorMatched(
     tempDest,
   );
   try {
-    await exec("ffmpeg", args, { maxBuffer: 8 * 1024 * 1024 });
+    await exec(env.ffmpegPath, args, { maxBuffer: 8 * 1024 * 1024 });
     renameSync(tempDest, dest);
   } finally {
     if (existsSync(tempDest)) unlinkSync(tempDest);
@@ -367,14 +367,14 @@ export async function concatCopy(jobDir: string, rels: string[], destName = "fin
   const temporaryFiles = [listPath, tempDest];
   writeFileSync(listPath, list + "\n");
   try {
-    await exec("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", tempDest], {
+    await exec(env.ffmpegPath, ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", tempDest], {
       cwd: jobDir,
     });
   } catch {
     const norms: string[] = [];
     for (let i = 0; i < rels.length; i++) {
       const out = rels[i]!.replace(/\.mp4$/, `.norm-${token}.mp4`);
-      await exec("ffmpeg", [
+      await exec(env.ffmpegPath, [
         "-y",
         "-i",
         `${jobDir}/${rels[i]}`,
@@ -394,7 +394,7 @@ export async function concatCopy(jobDir: string, rels: string[], destName = "fin
       temporaryFiles.push(`${jobDir}/${out}`);
     }
     writeFileSync(listPath, norms.map((r) => `file '${r}'`).join("\n") + "\n");
-    await exec("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", tempDest], {
+    await exec(env.ffmpegPath, ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", tempDest], {
       cwd: jobDir,
     });
   } finally {

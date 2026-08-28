@@ -1,5 +1,6 @@
 import { db } from "../db.js";
 import { env } from "../env.js";
+import { enabledVideoModelIds } from "./modelSettings.js";
 import { ApiError } from "../errors.js";
 import { nowIso } from "../ids.js";
 import { setWorkerStatus } from "../routes/health.js";
@@ -7,6 +8,7 @@ import { runAssetJob } from "./boardGenerate.js";
 import { emitEvent } from "./events.js";
 import { concatJob, runJob } from "./generation.js";
 import { generateStoryboard } from "./storyboard.js";
+import { beginShutdown, resetShutdown } from "./runtime.js";
 
 const WORKER = "local-1";
 
@@ -22,7 +24,7 @@ export async function recoverStuckJobs() {
   const now = nowIso();
   await db("asset_jobs")
     .where({ status: "generating" })
-    .update({ status: "failed", error: "worker_restarted", worker_id: null, lease_expires_at: null, updated_at: now });
+    .update({ status: "queued", error: null, worker_id: null, lease_expires_at: null, updated_at: now });
   await db("jobs")
     .where({ status: "storyboarding" })
     .whereNotNull("worker_id")
@@ -89,7 +91,7 @@ async function claimStoryboard() {
 
 async function claimGenerate() {
   const now = nowIso();
-  const statuses = env.featureVideoGen
+  const statuses = enabledVideoModelIds().length
     ? ["queued", "generating", "concatenating"]
     : ["generating", "concatenating"];
   const row = await db("jobs")
@@ -115,9 +117,11 @@ async function claimGenerate() {
 }
 
 let busy = false;
+let accepting = false;
+let timer: ReturnType<typeof setInterval> | null = null;
 
 async function tick() {
-  if (busy) return;
+  if (busy || !accepting) return;
   busy = true;
   try {
     await tickOnce();
@@ -134,19 +138,22 @@ async function tickOnce() {
       await runAssetJob(asset);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : (err as Error).message;
+      const paused = err instanceof ApiError && err.code === "worker_paused";
       await db("asset_jobs").where({ id: asset.id }).update({
-        status: "failed",
-        error: message,
+        status: paused ? "queued" : "failed",
+        error: paused ? null : message,
         worker_id: null,
         lease_expires_at: null,
         updated_at: nowIso(),
       });
-      await emitEvent({
-        jobId: `asset:${asset.id}`,
-        level: "error",
-        eventType: "error",
-        message,
-      });
+      if (!paused) {
+        await emitEvent({
+          jobId: `asset:${asset.id}`,
+          level: "error",
+          eventType: "error",
+          message,
+        });
+      }
     }
     setWorkerStatus("idle");
     return;
@@ -160,14 +167,17 @@ async function tickOnce() {
       await generateStoryboard(fresh!);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : (err as Error).message;
+      const paused = err instanceof ApiError && err.code === "worker_paused";
       await db("jobs").where({ id: job.id }).update({
-        status: "draft",
-        error: message,
+        status: paused ? "storyboarding" : "draft",
+        error: paused ? null : message,
         worker_id: null,
         lease_expires_at: null,
         updated_at: nowIso(),
       });
-      await emitEvent({ jobId: String(job.id), level: "error", eventType: "error", message });
+      if (!paused) {
+        await emitEvent({ jobId: String(job.id), level: "error", eventType: "error", message });
+      }
     }
     setWorkerStatus("idle");
     return;
@@ -183,7 +193,14 @@ async function tickOnce() {
     } catch (err) {
       const message = err instanceof ApiError ? err.message : (err as Error).message;
       const code = err instanceof ApiError ? err.code : "error";
-      if (code === "cancelled") {
+      if (code === "worker_paused") {
+        await db("jobs").where({ id: gen.id }).update({
+          worker_id: null,
+          lease_expires_at: null,
+          error: null,
+          updated_at: nowIso(),
+        });
+      } else if (code === "cancelled") {
         await db("jobs").where({ id: gen.id }).update({
           status: "cancelled",
           worker_id: null,
@@ -215,9 +232,42 @@ async function tickOnce() {
   }
 }
 
-export function startWorker() {
-  void recoverStuckJobs();
-  setInterval(() => {
+export async function startWorker() {
+  if (timer) return;
+  resetShutdown();
+  accepting = true;
+  await recoverStuckJobs();
+  timer = setInterval(() => {
     void tick().catch((err) => console.error("worker", err));
   }, 500);
+}
+
+export function isWorkerBusy(): boolean {
+  return busy;
+}
+
+export async function stopWorker(waitMs = 10_000): Promise<boolean> {
+  accepting = false;
+  beginShutdown();
+  if (timer) clearInterval(timer);
+  timer = null;
+  const deadline = Date.now() + waitMs;
+  while (busy && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  const now = nowIso();
+  await db("asset_jobs").where({ worker_id: WORKER }).update({
+    status: "queued",
+    error: null,
+    worker_id: null,
+    lease_expires_at: null,
+    updated_at: now,
+  });
+  await db("jobs").where({ worker_id: WORKER }).update({
+    worker_id: null,
+    lease_expires_at: null,
+    updated_at: now,
+  });
+  setWorkerStatus("paused");
+  return !busy;
 }

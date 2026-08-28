@@ -3,6 +3,7 @@ import AssetsView from "./views/AssetsView.vue";
 import ProduceView from "./views/ProduceView.vue";
 import JobsView from "./views/JobsView.vue";
 import JobDetailView from "./views/JobDetailView.vue";
+import ModelSettingsView from "./views/ModelSettingsView.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -12,5 +13,6 @@ export const router = createRouter({
     { path: "/produce", component: ProduceView },
     { path: "/jobs", component: JobsView },
     { path: "/jobs/:id", component: JobDetailView },
+    { path: "/settings/models", component: ModelSettingsView },
   ],
 });

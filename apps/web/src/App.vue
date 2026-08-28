@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
 import { computed } from "vue";
-import { PlayCircleIcon, LayersIcon, TaskIcon } from "tdesign-icons-vue-next";
+import { PlayCircleIcon, LayersIcon, TaskIcon, SettingIcon } from "tdesign-icons-vue-next";
 
 const route = useRoute();
 const router = useRouter();
 const value = computed(() => {
   if (route.path.startsWith("/assets")) return "/assets";
   if (route.path.startsWith("/jobs")) return "/jobs";
+  if (route.path.startsWith("/settings")) return "/settings/models";
   return "/produce";
 });
 
@@ -15,6 +16,7 @@ const NAV = [
   { value: "/produce", label: "制作", icon: PlayCircleIcon },
   { value: "/assets", label: "资产", icon: LayersIcon },
   { value: "/jobs", label: "任务", icon: TaskIcon },
+  { value: "/settings/models", label: "设置", icon: SettingIcon },
 ];
 </script>
 
@@ -39,7 +41,7 @@ const NAV = [
       </nav>
       <div class="top-foot">
         <span>本机</span>
-        <span class="dim">数据在 data/</span>
+        <span class="dim">数据保存在本机</span>
       </div>
     </header>
     <main class="main">

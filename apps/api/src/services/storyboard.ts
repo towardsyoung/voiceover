@@ -5,14 +5,13 @@ import { db } from "../db.js";
 import { env } from "../env.js";
 import { ApiError } from "../errors.js";
 import { chatJson } from "../providers/llm.js";
-import { REPO_ROOT } from "../env.js";
 import { StoryboardSchema, type Shot, type Storyboard } from "../schemas/storyboard.js";
 import { alnum, inferStance, modelLimits, renderKouboPrompt } from "../skills/koubo.js";
 import { emitEvent } from "./events.js";
 import { kindDir } from "./storage.js";
 
 function loadSkill(): string {
-  return readFileSync(join(REPO_ROOT, "skills/koubo/SKILL.md"), "utf8");
+  return readFileSync(join(env.resourceRoot, "skills/koubo/SKILL.md"), "utf8");
 }
 
 export function jobLinksEndFrame(job: Record<string, unknown>): boolean {

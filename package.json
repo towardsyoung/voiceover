@@ -5,7 +5,12 @@
     "dev": "bash scripts/dev.sh",
     "dev:api": "pnpm --filter @voiceover/api dev",
     "dev:web": "pnpm --filter @voiceover/web dev",
-    "typecheck": "pnpm --filter @voiceover/api typecheck && pnpm --filter @voiceover/web typecheck",
+    "build": "pnpm --filter @voiceover/api build && pnpm --filter @voiceover/web build && pnpm --filter @voiceover/desktop build",
+    "build:desktop": "pnpm build",
+    "typecheck": "pnpm --filter @voiceover/api typecheck && pnpm --filter @voiceover/web typecheck && pnpm --filter @voiceover/desktop typecheck",
+    "desktop": "pnpm build && pnpm --filter @voiceover/desktop start",
+    "package:mac": "pnpm build && pnpm --filter @voiceover/desktop package:mac",
+    "package:win": "pnpm build && pnpm --filter @voiceover/desktop package:win",
     "rebuild:native": "bash scripts/rebuild-native.sh"
   },
   "packageManager": "pnpm@11.11.0",

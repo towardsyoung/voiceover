@@ -70,7 +70,7 @@ const CAN_GENERATE = ["storyboard_ready", "needs_retry", "done", "concat_failed"
 const RETRYABLE_RUN = ["succeeded", "failed", "cancelled"];
 const QUERYABLE_JOB = ["needs_retry", "cancelled", "concat_failed"];
 const QUERYABLE_RUN = ["failed", "generating", "pending"];
-const VIDEO_GEN_HINT = "未开启视频生成。在 .env 设 FEATURE_VIDEO_GEN=1 并填写 ARK_API_KEY";
+const VIDEO_GEN_HINT = "没有可用的视频模型，请先到模型设置完成配置";
 
 const id = computed(() => String(route.params.id || ""));
 
@@ -117,18 +117,7 @@ const maxSec = computed(() => {
 
 const modelOptions = computed(() => {
   const list = config.value?.video_models ?? [];
-  if (list.length) return list.map((m) => ({ value: m.id, label: `${m.label} · ${m.min_sec}-${m.max_sec}s` }));
-  return [
-    { value: "seedance-2.0", label: "Seedance 2.0 · 4-15s" },
-    { value: "seedance-2.0-fast", label: "Seedance 2.0 Fast · 4-15s" },
-    { value: "seedance-2.0-mini", label: "Seedance 2.0 Mini · 4-15s" },
-    { value: "seedance-2.5", label: "Seedance 2.5 · 4-30s" },
-    { value: "seedance-2.0-real", label: "Seedance 2.0（真人） · 4-15s" },
-    { value: "seedance-2.0-fast-real", label: "Seedance 2.0 Fast（真人） · 4-15s" },
-    { value: "seedance-2.0-mini-real", label: "Seedance 2.0 Mini（真人） · 4-15s" },
-    { value: "seedance-2.5-real", label: "Seedance 2.5（真人） · 4-30s" },
-    { value: "MiniMax-H3", label: "MiniMax H3 · 2-15s" },
-  ];
+  return list.map((m) => ({ value: m.id, label: `${m.label} · ${m.min_sec}-${m.max_sec}s` }));
 });
 
 const resolutionOptions = computed(() => {
@@ -233,7 +222,7 @@ async function act(fn: () => Promise<Job>, warnFeature = false) {
     applyJob(await fn());
   } catch (e) {
     const msg = (e as Error).message || "";
-    if (msg.includes("FEATURE_VIDEO_GEN")) MessagePlugin.warning(VIDEO_GEN_HINT);
+    if (msg.includes("视频模型未配置")) MessagePlugin.warning(VIDEO_GEN_HINT);
     else MessagePlugin.error(msg);
   } finally {
     pending.value = false;

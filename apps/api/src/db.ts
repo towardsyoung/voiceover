@@ -15,6 +15,14 @@ export async function initDb(): Promise<void> {
   await db.raw("PRAGMA journal_mode=WAL");
   await db.raw("PRAGMA foreign_keys=ON");
 
+  if (!(await db.schema.hasTable("app_settings"))) {
+    await db.schema.createTable("app_settings", (t) => {
+      t.text("key").primary();
+      t.text("value_json").notNullable();
+      t.text("updated_at").notNullable();
+    });
+  }
+
   async function ensureColumn(table: string, column: string, type: string, defaultTo?: string) {
     const exists = await db.schema.hasColumn(table, column);
     if (exists) return;
@@ -176,4 +184,8 @@ export async function initDb(): Promise<void> {
     });
     await db.schema.raw("CREATE INDEX IF NOT EXISTS job_events_job_id ON job_events(job_id, id)");
   }
+}
+
+export async function closeDb(): Promise<void> {
+  await db.destroy();
 }

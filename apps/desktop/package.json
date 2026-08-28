@@ -1,0 +1,105 @@
+{
+  "name": "@voiceover/desktop",
+  "version": "0.1.0",
+  "description": "本地运行的数字人口播生成工作台",
+  "author": "towardsyoung",
+  "private": true,
+  "packageManager": "pnpm@11.11.0",
+  "type": "module",
+  "main": "dist/main.js",
+  "productName": "小阳哥数字人口播工作台",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "rebuild:native": "electron-builder install-app-deps",
+    "start": "electron .",
+    "package:mac": "node scripts/prepare-media.mjs && electron-builder --mac dmg --arm64 --publish never",
+    "package:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "dependencies": {
+    "@voiceover/api": "workspace:*",
+    "@ffmpeg-installer/ffmpeg": "1.1.0",
+    "@ffprobe-installer/ffprobe": "2.1.2"
+  },
+  "optionalDependencies": {
+    "@ffmpeg-installer/darwin-arm64": "4.1.5",
+    "@ffmpeg-installer/win32-x64": "4.1.0",
+    "@ffprobe-installer/darwin-arm64": "5.0.1",
+    "@ffprobe-installer/win32-x64": "5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3",
+    "typescript": "^5.9.2"
+  },
+  "build": {
+    "appId": "com.towardsyoung.voiceover",
+    "productName": "小阳哥数字人口播工作台",
+    "asar": true,
+    "npmRebuild": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web-dist"
+      },
+      {
+        "from": "../../prompts",
+        "to": "app-resources/prompts"
+      },
+      {
+        "from": "../../skills",
+        "to": "app-resources/skills"
+      }
+    ],
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**",
+      "**/node_modules/@ffmpeg-installer/**",
+      "**/node_modules/@ffprobe-installer/**",
+      "**/*.node"
+    ],
+    "artifactName": "xiaoyang-voiceover-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.video",
+      "identity": null,
+      "minimumSystemVersion": "13.0",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "小阳哥数字人口播工作台需要访问麦克风，用于录制人物音色样本。"
+      }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "xiaoyang-voiceover"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

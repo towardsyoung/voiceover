@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { db } from "../db.js";
 import { env } from "../env.js";
+import { getModelSettings } from "./modelSettings.js";
 import { ApiError } from "../errors.js";
 import { newId, nowIso } from "../ids.js";
 import { getVideoProvider } from "../providers/index.js";
@@ -12,6 +13,7 @@ import { absStored, kindDir } from "./storage.js";
 import { emitEvent } from "./events.js";
 import { concatColorMatched, concatCopy, extractLastFrame, probeVideo, toStructureSketch } from "./media.js";
 import { jobLinksEndFrame, promptCtx, readStoryboard } from "./storyboard.js";
+import { isShuttingDown } from "./runtime.js";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -187,7 +189,7 @@ export async function generateShot(job: Record<string, unknown>, shot: Shot) {
     generateAudio: true,
     characterId: job.character_id ? String(job.character_id) : undefined,
   };
-  if (link && env.attachPrevVideo && shot.index > 1) {
+  if (link && getModelSettings().attachPrevVideo && shot.index > 1) {
     const prevVid = join(kindDir("jobs", jobId), "shots", pad(shot.index - 1), "video.mp4");
     if (existsSync(prevVid)) req.videos = [prevVid];
   }
@@ -229,6 +231,9 @@ export async function generateShot(job: Record<string, unknown>, shot: Shot) {
 
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
+    if (isShuttingDown()) {
+      throw new ApiError(503, "worker_paused", "应用关闭，任务已暂停");
+    }
     if (await cancelled(jobId)) {
       await videoProvider.cancel(requestId);
       throw new ApiError(409, "cancelled", "用户取消");

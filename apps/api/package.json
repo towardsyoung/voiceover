@@ -2,9 +2,23 @@
   "name": "@voiceover/api",
   "private": true,
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./dist/server.js"
+    },
+    "./worker": {
+      "types": "./src/services/worker.ts",
+      "default": "./dist/services/worker.js"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/app.ts",
-    "start": "tsx src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts"
   },

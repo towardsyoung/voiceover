@@ -44,19 +44,7 @@ const videoSystemPrompt = ref("");
 
 const modelOptions = computed(() => {
   const list = config.value?.video_models ?? [];
-  if (list.length) {
-    return list.map((m) => ({ value: m.id, label: `${m.label} · ${m.min_sec}-${m.max_sec}s`, max: m.max_sec }));
-  }
-  return [
-    { value: "seedance-2.0", label: "Seedance 2.0 · 4-15s", max: 15 },
-    { value: "seedance-2.0-fast", label: "Seedance 2.0 Fast · 4-15s", max: 15 },
-    { value: "seedance-2.0-mini", label: "Seedance 2.0 Mini · 4-15s", max: 15 },
-    { value: "seedance-2.5", label: "Seedance 2.5 · 4-30s", max: 30 },
-    { value: "seedance-2.0-real", label: "Seedance 2.0（真人） · 4-15s", max: 15 },
-    { value: "seedance-2.0-fast-real", label: "Seedance 2.0 Fast（真人） · 4-15s", max: 15 },
-    { value: "seedance-2.0-mini-real", label: "Seedance 2.0 Mini（真人） · 4-15s", max: 15 },
-    { value: "seedance-2.5-real", label: "Seedance 2.5（真人） · 4-30s", max: 30 },
-  ];
+  return list.map((m) => ({ value: m.id, label: `${m.label} · ${m.min_sec}-${m.max_sec}s`, max: m.max_sec }));
 });
 
 const selectedModel = computed(() => modelOptions.value.find((m) => m.value === model.value));
@@ -86,6 +74,7 @@ const missing = computed(() => {
   if (!characterId.value) m.push("人物");
   if (!sceneId.value) m.push("场景");
   if (!voiceId.value) m.push("音色");
+  if (!model.value || !modelOptions.value.some((item) => item.value === model.value)) m.push("视频模型");
   return m;
 });
 const canCreate = computed(() => missing.value.length === 0 && !pending.value);

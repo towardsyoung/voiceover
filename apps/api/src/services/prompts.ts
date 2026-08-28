@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { REPO_ROOT } from "../env.js";
+import { env } from "../env.js";
 
 function extractTextBlock(md: string): string {
   const m = md.match(/```text\n([\s\S]*?)```/);
@@ -8,7 +8,7 @@ function extractTextBlock(md: string): string {
 }
 
 function load(name: string): string {
-  return extractTextBlock(readFileSync(join(REPO_ROOT, "prompts", name), "utf8"));
+  return extractTextBlock(readFileSync(join(env.resourceRoot, "prompts", name), "utf8"));
 }
 
 export function stylePrefix(): string {

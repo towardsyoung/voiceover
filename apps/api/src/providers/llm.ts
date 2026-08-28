@@ -1,15 +1,16 @@
-import { env } from "../env.js";
 import { ApiError } from "../errors.js";
+import { getModelSettings, isLlmEnabled } from "../services/modelSettings.js";
 
 export async function chatJson(input: {
   system: string;
   user: string;
   schema?: Record<string, unknown>;
 }): Promise<{ text: string; usedSchema: boolean }> {
-  if (!env.llmBaseUrl || !env.llmApiKey || !env.llmModel) {
-    throw new ApiError(400, "feature_disabled", "未配置 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL");
+  const settings = getModelSettings();
+  if (!isLlmEnabled(settings)) {
+    throw new ApiError(400, "feature_disabled", "请先在模型设置中配置分镜 LLM");
   }
-  const url = `${env.llmBaseUrl}/chat/completions`;
+  const url = `${settings.llm.baseUrl}/chat/completions`;
   const messages = [
     { role: "system", content: input.system },
     { role: "user", content: input.user },
@@ -17,7 +18,7 @@ export async function chatJson(input: {
 
   async function call(mode: "json_schema" | "json_object") {
     const body: Record<string, unknown> = {
-      model: env.llmModel,
+      model: settings.llm.model,
       messages,
       max_completion_tokens: 8192,
     };
@@ -32,7 +33,7 @@ export async function chatJson(input: {
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.llmApiKey}`,
+        Authorization: `Bearer ${settings.llm.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -58,7 +59,7 @@ export async function chatJson(input: {
     return text;
   }
 
-  const preferSchema = env.llmJsonMode === "json_schema" && !!input.schema;
+  const preferSchema = settings.llm.jsonMode === "json_schema" && !!input.schema;
   if (preferSchema) {
     try {
       return { text: await call("json_schema"), usedSchema: true };
