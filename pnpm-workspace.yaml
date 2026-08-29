@@ -8,8 +8,10 @@ minimumReleaseAgeExclude:
 
 allowBuilds:
   '@ffmpeg-installer/darwin-arm64': true
+  '@ffmpeg-installer/linux-x64': true
   '@ffmpeg-installer/win32-x64': true
   '@ffprobe-installer/darwin-arm64': true
+  '@ffprobe-installer/linux-x64': true
   '@ffprobe-installer/win32-x64': true
   better-sqlite3: true
   electron: true
@@ -18,8 +20,10 @@ allowBuilds:
 
 onlyBuiltDependencies:
   - '@ffmpeg-installer/darwin-arm64'
+  - '@ffmpeg-installer/linux-x64'
   - '@ffmpeg-installer/win32-x64'
   - '@ffprobe-installer/darwin-arm64'
+  - '@ffprobe-installer/linux-x64'
   - '@ffprobe-installer/win32-x64'
   - better-sqlite3
   - electron
