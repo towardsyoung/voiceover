@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { extname } from "node:path";
 import { ApiError } from "../errors.js";
-import { getModelSettings, MINIMAX_VIDEO_MODEL } from "../services/modelSettings.js";
+import { getModelSettings, MINIMAX_VIDEO_MODEL, type ModelSettings } from "../services/modelSettings.js";
 import type { VideoGenRequest, VideoPoll, VideoProvider } from "./video.js";
 
 const MIME: Record<string, string> = {
@@ -47,6 +47,8 @@ function log(msg: string) {
 export class MinimaxH3Provider implements VideoProvider {
   id = "minimax";
 
+  constructor(private readonly settings: () => ModelSettings["minimax"] = () => getModelSettings().minimax) {}
+
   supports(model: string): boolean {
     return model === MINIMAX_VIDEO_MODEL;
   }
@@ -56,18 +58,18 @@ export class MinimaxH3Provider implements VideoProvider {
   }
 
   private modelId(): string {
-    return getModelSettings().minimax.model;
+    return this.settings().model;
   }
 
   private ensureEnv() {
-    const settings = getModelSettings().minimax;
+    const settings = this.settings();
     if (!settings.apiKey || !settings.baseUrl || !settings.model) {
       throw new ApiError(400, "feature_disabled", "请先在模型设置中配置 MiniMax H3");
     }
   }
 
   private baseUrl(): string {
-    return getModelSettings().minimax.baseUrl;
+    return this.settings().baseUrl;
   }
 
   async submit(req: VideoGenRequest): Promise<string> {
@@ -102,7 +104,7 @@ export class MinimaxH3Provider implements VideoProvider {
     log("完整视频提示词 (" + promptChars + "字):\n" + req.prompt);
     const res = await fetch(`${this.baseUrl()}/v1/video/generations`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${getModelSettings().minimax.apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${this.settings().apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const raw = await res.text();
@@ -132,7 +134,7 @@ export class MinimaxH3Provider implements VideoProvider {
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl()}/v1/video/generations/${requestId}`, {
-        headers: { Authorization: `Bearer ${getModelSettings().minimax.apiKey}` },
+        headers: { Authorization: `Bearer ${this.settings().apiKey}` },
       });
     } catch (err) {
       const msg = (err as Error).message || "fetch failed";
@@ -181,7 +183,7 @@ export class MinimaxH3Provider implements VideoProvider {
     try {
       await fetch(`${this.baseUrl()}/v2/video_generation/${requestId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${getModelSettings().minimax.apiKey}` },
+        headers: { Authorization: `Bearer ${this.settings().apiKey}` },
       });
     } catch {
       /* MiniMax 未明确 DELETE 语义，忽略 */
