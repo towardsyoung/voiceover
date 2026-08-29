@@ -49,3 +49,7 @@ GitHub Actions 可手动生成测试安装包；推送与 `apps/desktop/package.
 - `doc/数字人口播工作台-技术方案.md`
 - `skills/koubo/SKILL.md`
 - `prompts/`
+  
+## 下载地址
+Mac：https://github.com/towardsyoung/voiceover/actions/runs/33229322045/artifacts/9707986048
+Windows：https://github.com/towardsyoung/voiceover/actions/runs/33229322045/artifacts/9708030146
