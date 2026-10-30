@@ -16,17 +16,24 @@
 
 如需数字人口播定制服务，可扫描下方微信二维码联系，沟通形象、口播内容、使用场景和交付需求。
 
-<a href="docs/assets/custom-service.jpg">
-  <img src="docs/assets/custom-service.jpg" alt="AI 数字人口播定制服务介绍，点击查看大图" height="320" />
-</a>
-
-<p align="center">
-  <a href="docs/assets/wechat-contact.png">
-    <img src="docs/assets/wechat-contact.png" alt="定制服务联系微信二维码，点击查看大图" width="280" />
-  </a>
-  <br />
-  扫码添加微信，咨询定制服务
-</p>
+<table>
+  <tr>
+    <td align="center" valign="top">
+      <a href="docs/assets/custom-service.jpg">
+        <img src="docs/assets/custom-service.jpg" alt="AI 数字人口播定制服务介绍，点击查看大图" width="280" height="280" />
+      </a>
+      <br />
+      数字人口播定制服务
+    </td>
+    <td align="center" valign="top">
+      <a href="docs/assets/wechat-contact.png">
+        <img src="docs/assets/wechat-contact.png" alt="定制服务联系微信二维码，点击查看大图" width="280" height="280" />
+      </a>
+      <br />
+      扫码添加微信，咨询定制服务
+    </td>
+  </tr>
+</table>
 
 ## 一期启动
 
