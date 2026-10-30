@@ -4,9 +4,11 @@
 
 ## 示例视频
 
-点击下方封面查看数字人口播示例。
+点击下方封面打开完整视频，可在播放器中全屏观看。
 
-[![数字人口播示例视频](docs/assets/digital-human-demo-cover.jpg)](docs/assets/digital-human-demo.mp4)
+<a href="docs/assets/digital-human-demo.mp4">
+  <img src="docs/assets/digital-human-demo-cover.jpg" alt="数字人口播示例视频，点击观看" height="320" />
+</a>
 
 [查看示例视频（MP4）](docs/assets/digital-human-demo.mp4)
 
@@ -14,10 +16,14 @@
 
 如需数字人口播定制服务，可扫描下方微信二维码联系，沟通形象、口播内容、使用场景和交付需求。
 
-![AI 数字人口播定制服务介绍](docs/assets/custom-service.jpg)
+<a href="docs/assets/custom-service.jpg">
+  <img src="docs/assets/custom-service.jpg" alt="AI 数字人口播定制服务介绍，点击查看大图" height="320" />
+</a>
 
 <p align="center">
-  <img src="docs/assets/wechat-contact.png" alt="定制服务联系微信二维码" width="280" />
+  <a href="docs/assets/wechat-contact.png">
+    <img src="docs/assets/wechat-contact.png" alt="定制服务联系微信二维码，点击查看大图" width="280" />
+  </a>
   <br />
   扫码添加微信，咨询定制服务
 </p>
