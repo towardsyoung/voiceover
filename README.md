@@ -2,6 +2,26 @@
 
 本地 / 内网工作台：人物、场景、音色入库，再按口播稿分镜出片。
 
+## 示例视频
+
+点击下方封面查看数字人口播示例。
+
+[![数字人口播示例视频](docs/assets/digital-human-demo-cover.jpg)](docs/assets/digital-human-demo.mp4)
+
+[查看示例视频（MP4）](docs/assets/digital-human-demo.mp4)
+
+## 定制服务与联系
+
+如需数字人口播定制服务，可扫描下方微信二维码联系，沟通形象、口播内容、使用场景和交付需求。
+
+![AI 数字人口播定制服务介绍](docs/assets/custom-service.jpg)
+
+<p align="center">
+  <img src="docs/assets/wechat-contact.png" alt="定制服务联系微信二维码" width="280" />
+  <br />
+  扫码添加微信，咨询定制服务
+</p>
+
 ## 一期启动
 
 需要 Node 20+、pnpm、本机 ffmpeg。
